@@ -67,9 +67,7 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
     public boolean areResourcesAvailable(Appointment appointment) {
         AtomicBoolean available = new AtomicBoolean(true);
         appointment.getRequiredResources().stream().forEach(resource -> {
-            resource.getUnavailableTimeSlots().stream().forEach(ts -> {
-                available.set(available.get() && isResourceAvailable(appointment, resource));
-            });
+            available.set(available.get() && isResourceAvailable(appointment, resource));
         });
         return available.get();
     }
