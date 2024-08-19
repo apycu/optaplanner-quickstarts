@@ -24,13 +24,16 @@ public class Appointment {
 
     private List<Resource> requiredResources;
 
-    private List<TimeConstraint> timeConstraints;
-
     @PlanningVariable(valueRangeProviderRefs = "timeRange")
     private LocalDateTime startTime;
 
+    @PlanningVariable(valueRangeProviderRefs = "bestCommonResource1")
+    private TaggableResource bestCommonResource1;
+
+    private String bestCommonResource1Name;
+
     @Override
     public String toString() {
-        return String.format("Appointment(%s - %s - %s)", getName(), getStartTime(), getDurationMinutes());
+        return String.format("Appointment(%s - %s - %s - %s)", getName(), getStartTime(), getDurationMinutes(), bestCommonResource1 == null ? "" : bestCommonResource1.getName());
     }
 }

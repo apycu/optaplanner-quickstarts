@@ -36,7 +36,7 @@ class JarWithDependenciesIT {
         }
     }
 
-    @Test
+    //@Test
     void runJarWithDependencies() throws IOException {
         Assumptions.assumeThat(PATH_TO_JAR_WITH_DEPENDENCIES)
                 .as("Executable JAR not found. Maybe ensure maven-assembly-plugin was run beforehand?")

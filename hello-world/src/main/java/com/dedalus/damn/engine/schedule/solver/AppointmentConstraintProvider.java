@@ -1,7 +1,7 @@
 package com.dedalus.damn.engine.schedule.solver;
 
-import com.dedalus.damn.engine.schedule.ScheduleApp;
 import com.dedalus.damn.engine.schedule.domain.Appointment;
+import com.dedalus.damn.engine.schedule.domain.Resource;
 import com.dedalus.damn.engine.schedule.domain.TimeConstraint;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AppointmentConstraintProvider implements ConstraintProvider {
@@ -24,13 +23,14 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
     public Constraint[] defineConstraints(ConstraintFactory factory) {
         return new Constraint[]{
                 resourceAvailabilityConstraint(factory),
-                timeConstraint(factory)
+                timeConstraint(factory),
+                sameDynamic(factory)
         };
     }
 
     private Constraint resourceAvailabilityConstraint(ConstraintFactory factory) {
         return factory.forEach(Appointment.class)
-                .filter(appointment -> !isResourcesAvailable(appointment))
+                .filter(appointment -> !areResourcesAvailable(appointment))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Resource not available");
     }
@@ -48,12 +48,36 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
                 .asConstraint("Time constraint conflict");
     }
 
-    public boolean isResourcesAvailable(Appointment appointment) {
+    private Constraint sameDynamic(ConstraintFactory factory) {
+        return factory.forEachUniquePair(Appointment.class, Joiners.equal(Appointment::getBestCommonResource1Name))
+                .filter((appointment, appointment2) -> {
+                    if (!appointment.getBestCommonResource1().getTag().equals(appointment.getBestCommonResource1Name())){
+                        return true;
+                    }
+                    if (!isResourceAvailable(appointment, appointment.getBestCommonResource1())) {
+                        return true;
+                    }
+                    // System.out.println("OOOHH " + appointment + " " + appointment2);
+                    return !appointment.getBestCommonResource1().getId().equals(appointment2.getBestCommonResource1().getId());
+                })
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Dynamic value not the same");
+    }
+
+    public boolean areResourcesAvailable(Appointment appointment) {
         AtomicBoolean available = new AtomicBoolean(true);
         appointment.getRequiredResources().stream().forEach(resource -> {
             resource.getUnavailableTimeSlots().stream().forEach(ts -> {
-                available.set(available.get() && !isOverlapping(appointment.getStartTime(), appointment.getStartTime().plusMinutes(appointment.getDurationMinutes()), ts.getStart(), ts.getEnd()));
+                available.set(available.get() && isResourceAvailable(appointment, resource));
             });
+        });
+        return available.get();
+    }
+
+    public boolean isResourceAvailable(Appointment appointment, Resource resource) {
+        AtomicBoolean available = new AtomicBoolean(true);
+        resource.getUnavailableTimeSlots().stream().forEach(ts -> {
+            available.set(available.get() && !isOverlapping(appointment.getStartTime(), appointment.getStartTime().plusMinutes(appointment.getDurationMinutes()), ts.getStart(), ts.getEnd()));
         });
         return available.get();
     }
