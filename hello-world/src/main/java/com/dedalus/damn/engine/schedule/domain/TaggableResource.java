@@ -12,8 +12,8 @@ public class TaggableResource extends Resource {
 
     private String tag;
 
-    public TaggableResource(Long id, String name, List<TimeSlot> unavailableTimeSlots, String tag) {
-        super(id, name, unavailableTimeSlots);
+    public TaggableResource(String id, String name, List<TimeSlot> unavailableTimeSlots, List<TimeSlot> availableTimeSlots, String tag) {
+        super(id, name, unavailableTimeSlots, availableTimeSlots);
         this.tag = tag;
     }
 }

@@ -24,7 +24,7 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
         return new Constraint[]{
                 resourceAvailabilityConstraint(factory),
                 timeConstraint(factory),
-                sameDynamic(factory)
+//                sameDynamic(factory)
         };
     }
 
@@ -38,9 +38,9 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
     private Constraint timeConstraint(ConstraintFactory factory) {
         return factory.forEach(TimeConstraint.class)
                 .join(Appointment.class,
-                        Joiners.equal(timeConstraint -> timeConstraint.getEarlierAppointment().getId(), appointment -> appointment.getId()))
+                        Joiners.equal(timeConstraint -> timeConstraint.getEarlierAppointmentId(), appointment -> appointment.getId()))
                 .join(Appointment.class,
-                        Joiners.equal((timeConstraint, earlierAppointment) -> timeConstraint.getLaterAppointment().getId(), appointment -> appointment.getId()))
+                        Joiners.equal((timeConstraint, earlierAppointment) -> timeConstraint.getLaterAppointmentId(), appointment -> appointment.getId()))
                 .filter((timeConstraint, earlierAppointment, laterAppointment) -> {
                     return !isTimeConstraintSatisfied(timeConstraint, earlierAppointment, laterAppointment);
                 })
@@ -48,21 +48,23 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
                 .asConstraint("Time constraint conflict");
     }
 
-    private Constraint sameDynamic(ConstraintFactory factory) {
-        return factory.forEachUniquePair(Appointment.class, Joiners.equal(Appointment::getBestCommonResource1Name))
-                .filter((appointment, appointment2) -> {
-                    if (!appointment.getBestCommonResource1().getTag().equals(appointment.getBestCommonResource1Name())){
-                        return true;
-                    }
-                    if (!isResourceAvailable(appointment, appointment.getBestCommonResource1())) {
-                        return true;
-                    }
-                    // System.out.println("OOOHH " + appointment + " " + appointment2);
-                    return !appointment.getBestCommonResource1().getId().equals(appointment2.getBestCommonResource1().getId());
-                })
-                .penalize(HardSoftScore.ONE_HARD)
-                .asConstraint("Dynamic value not the same");
-    }
+//    private Constraint sameDynamic(ConstraintFactory factory) {
+//        return factory.forEachUniquePair(Appointment.class, Joiners.equal(Appointment::getBestCommonResource1Name))
+//                .filter((appointment, appointment2) -> {
+//                    if (!appointment.getBestCommonResource1().getTag().equals(appointment.getBestCommonResource1Name())){
+//                        return true;
+//                    }
+//                    if (!isResourceAvailable(appointment, appointment.getBestCommonResource1())) {
+//                        return true;
+//                    }
+//                    if (!isResourceAvailable(appointment2, appointment2.getBestCommonResource1())) {
+//                        return true;
+//                    }
+//                    return !appointment.getBestCommonResource1().getId().equals(appointment2.getBestCommonResource1().getId());
+//                })
+//                .penalize(HardSoftScore.ONE_SOFT)
+//                .asConstraint("Dynamic value not the same");
+//    }
 
     public boolean areResourcesAvailable(Appointment appointment) {
         AtomicBoolean available = new AtomicBoolean(true);
@@ -74,9 +76,16 @@ public class AppointmentConstraintProvider implements ConstraintProvider {
 
     public boolean isResourceAvailable(Appointment appointment, Resource resource) {
         AtomicBoolean available = new AtomicBoolean(true);
-        resource.getUnavailableTimeSlots().stream().forEach(ts -> {
-            available.set(available.get() && !isOverlapping(appointment.getStartTime(), appointment.getStartTime().plusMinutes(appointment.getDurationMinutes()), ts.getStart(), ts.getEnd()));
-        });
+        if (resource.getUnavailableTimeSlots() != null) {
+            resource.getUnavailableTimeSlots().stream().forEach(ts -> {
+                available.set(available.get() && !isOverlapping(appointment.getStartTime(), appointment.getStartTime().plusMinutes(appointment.getDurationMinutes()), ts.getStart(), ts.getEnd()));
+            });
+        } else if (resource.getAvailableTimeSlots() != null) {
+            available.set(false);
+            resource.getAvailableTimeSlots().stream().forEach(ts -> {
+                available.set(available.get() || isOverlapping(appointment.getStartTime(), appointment.getStartTime().plusMinutes(appointment.getDurationMinutes()), ts.getStart(), ts.getEnd()));
+            });
+        }
         return available.get();
     }
 

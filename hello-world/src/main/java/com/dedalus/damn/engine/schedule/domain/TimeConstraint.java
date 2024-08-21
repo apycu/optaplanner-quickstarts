@@ -6,8 +6,8 @@ import java.time.Duration;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @ToString
 public class TimeConstraint {
 
-    private Appointment earlierAppointment;
-    private Appointment laterAppointment;
+    private String earlierAppointmentId;
+    private String laterAppointmentId;
     private Duration minDuration;
     private Duration maxDuration;
 
